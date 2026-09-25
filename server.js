@@ -750,58 +750,6 @@ function uniqueSorted(
 const MAIN_SELLERS = [
   {
     key:
-      "Bahia Khai",
-
-    label:
-      "Bahia",
-
-    aliases: [
-      "Bahia Khai"
-    ]
-  },
-
-  {
-    key:
-      "Asmaa Kaiter",
-
-    label:
-      "Asma",
-
-    aliases: [
-      "Asmaa Kaiter",
-      "Asma Kaiter"
-    ]
-  },
-
-  {
-    key:
-      "Maria Arslan",
-
-    label:
-      "Maria",
-
-    aliases: [
-      "Maria Arslan"
-    ]
-  },
-
-  {
-    key:
-      "Dzhansu Seyhan ARI",
-
-    label:
-      "Cansu",
-
-    aliases: [
-      "Dzhansu Seyhan ARI",
-      "Dzhansu Seyhan Ari",
-      "Cansu Seyhan ARI",
-      "Jansu Seyhan ARI"
-    ]
-  },
-
-  {
-    key:
       "Şebnem Mammadova",
 
     label:
@@ -810,6 +758,58 @@ const MAIN_SELLERS = [
     aliases: [
       "Şebnem Mammadova",
       "Sebnem Mammadova"
+    ]
+  },
+
+  {
+    key:
+      "Alican Kulyyev",
+
+    label:
+      "Alican",
+
+    aliases: [
+      "Alican Kulyyev",
+      "Alıcan Kulyyev"
+    ]
+  },
+
+  {
+    key:
+      "Balzhan ADREISSOVA",
+
+    label:
+      "Balzhan",
+
+    aliases: [
+      "Balzhan ADREISSOVA",
+      "Balzhan ABDREISSOVA"
+    ]
+  },
+
+  {
+    key:
+      "ÇINARA AKYÜZ",
+
+    label:
+      "Çinara",
+
+    aliases: [
+      "ÇINARA AKYÜZ",
+      "Çinara Akyüz",
+      "CINARA AKYUZ"
+    ]
+  },
+
+  {
+    key:
+      "Rana Ekiz",
+
+    label:
+      "Rana",
+
+    aliases: [
+      "Rana Ekiz"
     ]
   }
 ];
@@ -1782,6 +1782,8 @@ function commonFields(
       cleanText(
         pick(
           lookup,
+          "Source HBYS",
+          "Source",
           "Bookimed Coordinators",
           "Bookimed Coordinator"
         )
@@ -2823,7 +2825,7 @@ async function buildCoreData() {
     Koordinatör satırında tarih yoksa aynı Bitrix/Bookimed ID'li
     Ham Lead kaydının New Lead (yoksa başlangıç) tarihini kullan.
   */
-  const coordinatorRows =
+  const legacyCoordinatorRows =
     coordinatorDedup.rows.map(
       (
         row
@@ -2886,6 +2888,74 @@ async function buildCoreData() {
     buildIdMap(
       wonEnrichment.rows
     );
+
+  /*
+    Yeni RU ekip yapısında aracı bilgisi Source HBYS sütunundadır.
+    Ayrı bir Ham Koordinatör sayfasına ihtiyaç duymadan, her lead'i
+    teklif ve satış tablolarındaki aynı ID ile eşleştirerek aracı
+    performans satırlarını oluştururuz.
+  */
+  const coordinatorRows =
+    leadDedup.rows
+      .filter(
+        row =>
+          row.id &&
+          row.seller &&
+          row.coordinator
+      )
+      .map(
+        row => {
+          const isSale =
+            wonIdMap.has(row.id);
+
+          const isQuoted =
+            quoteIdMap.has(row.id);
+
+          const date =
+            row.newLeadDate ||
+            row.date ||
+            null;
+
+          const parts =
+            dateParts(date);
+
+          return {
+            ...row,
+            date,
+            year: parts.year,
+            month: parts.month,
+            day: parts.day,
+            statusKey:
+              isSale
+                ? "successful"
+                : isQuoted
+                  ? "appointmentbooked"
+                  : "lead",
+            status:
+              isSale
+                ? "Satış"
+                : isQuoted
+                  ? "Teklif"
+                  : "Lead",
+            statusRaw:
+              isSale
+                ? "Deal won"
+                : isQuoted
+                  ? "Quoted"
+                  : "Lead",
+            isQuoted:
+              isQuoted ||
+              isSale,
+            isSale,
+            statusRank:
+              isSale
+                ? 3
+                : isQuoted
+                  ? 2
+                  : 1
+          };
+        }
+      );
 
   const leadRows =
     leadDedup.rows.filter(
@@ -5492,8 +5562,7 @@ function buildCoordinatorAnalysis(
       (
         row
       ) =>
-        row.statusKey ===
-        "appointmentbooked"
+        row.isQuoted
     ).length;
 
   const arrived =
@@ -5606,8 +5675,7 @@ function buildCoordinatorAnalysis(
       1;
 
     if (
-      row.statusKey ===
-      "appointmentbooked"
+      row.isQuoted
     ) {
       coordinator.appointmentBooked +=
         1;
@@ -5795,8 +5863,7 @@ function buildCoordinatorAnalysis(
     }
 
     if (
-      row.statusKey ===
-      "appointmentbooked"
+      row.isQuoted
     ) {
       sellerCross.appointmentBooked +=
         1;
@@ -5860,8 +5927,7 @@ function buildCoordinatorAnalysis(
     }
 
     if (
-      row.statusKey ===
-      "appointmentbooked"
+      row.isQuoted
     ) {
       departmentCross.appointmentBooked +=
         1;
@@ -6275,16 +6341,16 @@ function buildCoordinatorAnalysis(
 
     rule: {
       salesStatuses: [
-        "Appointment Booked",
-        "Arrived",
-        "Successful"
+        "Lead",
+        "Teklif",
+        "Satış"
       ],
 
       dedupe:
-        "Bookimed ID bazında tekilleştirilir; duplicate varsa satış statüsü daha yüksek olan kayıt korunur.",
+        "Bitrix ID bazında tekilleştirilir; aynı ID yalnızca bir kez sayılır.",
 
       period:
-        "Ay seçimi koordinatör tarihinden; tarih boşsa aynı ID'li Ham Lead New Lead/Başlangıç tarihinden yapılır."
+        "Ay seçimi Ham Lead sayfasındaki YD New Lead - Arrived Time; bu alan boşsa Başlangıç tarihi üzerinden yapılır."
     }
   };
 }
@@ -6449,7 +6515,7 @@ function buildOpenCasesXlsx(rows, metadata) {
   const total = sumBy(rows, row => Number(row.amountUsd || 0));
   const sheetRows = [];
 
-  sheetRows.push(`<row r="1" ht="26" customHeight="1">${excelCell(1, 0, "BOOKIMED BÜYÜK AÇIK VAKALAR RAPORU", 1)}</row>`);
+  sheetRows.push(`<row r="1" ht="26" customHeight="1">${excelCell(1, 0, "RU ARACI TAKIMI BÜYÜK AÇIK VAKALAR RAPORU", 1)}</row>`);
 
   const meta = [
     ["Rapor Tarihi", metadata.reportDate],
@@ -6459,7 +6525,7 @@ function buildOpenCasesXlsx(rows, metadata) {
     ["Başlangıç Tarihi", metadata.startDate],
     ["Bitiş Tarihi", metadata.endDate],
     ["Ana Filtre - Satıcı", metadata.seller],
-    ["Ana Filtre - Koordinatör", metadata.coordinator],
+    ["Ana Filtre - Aracı", metadata.coordinator],
     ["Ana Filtre - Bölüm", metadata.department],
     ["Ana Filtre - Doktor", metadata.doctor],
     ["Ana Filtre - Kaynak", metadata.source]
@@ -6470,7 +6536,7 @@ function buildOpenCasesXlsx(rows, metadata) {
     sheetRows.push(`<row r="${rowNumber}">${excelCell(rowNumber, 0, item[0], 2)}${excelCell(rowNumber, 1, item[1], 0)}</row>`);
   });
 
-  const headers = ["Sıra", "Bitrix ID", "Hasta Adı", "Satıcı", "Bölüm", "Doktor", "Koordinatör", "Kaynak", "Teklif Tarihi", "Teklif Tutarı (USD)"];
+  const headers = ["Sıra", "Bitrix ID", "Hasta Adı", "Satıcı", "Bölüm", "Doktor", "Aracı", "Kaynak", "Teklif Tarihi", "Teklif Tutarı (USD)"];
   sheetRows.push(`<row r="${headerRow}" ht="24" customHeight="1">${headers.map((header, index) => excelCell(headerRow, index, header, 3)).join("")}</row>`);
 
   rows.forEach((row, index) => {
@@ -6507,8 +6573,8 @@ function buildOpenCasesXlsx(rows, metadata) {
   const rootRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/></Relationships>`;
   const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>`;
   const now = new Date().toISOString();
-  const core = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>Bookimed Büyük Açık Vakalar Raporu</dc:title><dc:creator>Bookimed Sales Portal</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF">${now}</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">${now}</dcterms:modified></cp:coreProperties>`;
-  const appProperties = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"><Application>Bookimed Sales Portal</Application></Properties>`;
+  const core = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>RU Aracı Takımı Büyük Açık Vakalar Raporu</dc:title><dc:creator>RU Aracı Takımı Satış Dashboard’u</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF">${now}</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">${now}</dcterms:modified></cp:coreProperties>`;
+  const appProperties = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"><Application>RU Aracı Takımı Satış Dashboard’u</Application></Properties>`;
 
   return createStoredZip([
     { name: "[Content_Types].xml", data: contentTypes },
@@ -6863,7 +6929,7 @@ app.get(
           .slice(0, 10);
 
       const filename =
-        `Bookimed_Filtreli_Buyuk_Vakalar_${fileDate}.xlsx`;
+        `RU_Araci_Takimi_Filtreli_Buyuk_Vakalar_${fileDate}.xlsx`;
 
       res.setHeader(
         "Content-Type",
@@ -6938,7 +7004,7 @@ app.get(
       error
     ) {
       console.error(
-        "Coordinator dashboard error:",
+        "Aracı Dashboard hatası:",
         error
       );
 
@@ -6968,7 +7034,7 @@ app.get(
         true,
 
       service:
-        "bookimed-sales-dashboard",
+        "ru-araci-takimi-dashboard",
 
       year:
         YEAR,
@@ -6977,7 +7043,7 @@ app.get(
         "Deal Won monthly run-rate projection",
 
       coordinatorRule:
-        "Appointment Booked + Arrived + Successful = sales card",
+        "Source HBYS aracı alanı; Bitrix ID bazında Lead → Teklif → Satış",
 
       coordinatorEndpoint:
         "/api/coordinator",
@@ -7019,11 +7085,11 @@ app.listen(
 
   () => {
     console.log(
-      `Bookimed Sales Dashboard çalışıyor - Port ${PORT}`
+      `RU Aracı Takımı Satış Dashboard’u çalışıyor - Port ${PORT}`
     );
 
     console.log(
-      "Coordinator analytics aktif: /api/coordinator"
+      "Aracı Dashboard aktif: /api/coordinator"
     );
 
     /* İlk kullanıcıyı bekletmemek için veriyi sunucu açılışında hazırla. */

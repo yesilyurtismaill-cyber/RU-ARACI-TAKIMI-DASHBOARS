@@ -572,7 +572,7 @@
     const key=state.coordinatorSort.key, dir=state.coordinatorSort.dir==="asc"?1:-1;
     const filtered=rows.filter(r=>!query||[r.coordinator,r.topSeller,r.topDepartment].some(v=>String(v||"").toLocaleLowerCase("tr-TR").includes(query))).sort((a,b)=>{const av=a[key],bv=b[key];return (typeof av==="number"&&typeof bv==="number"?av-bv:String(av||"").localeCompare(String(bv||""),"tr"))*dir;});
     const head=(label,field)=>`<th class="sortable" data-coordinator-sort="${field}">${label}${key===field?`<span class="sort-indicator">${dir===1?"▲":"▼"}</span>`:""}</th>`;
-    return `<div class="table-toolbar"><input id="coordinatorSearch" class="table-search" value="${esc(state.coordinatorSearch)}" placeholder="Aracı, satıcı veya bölüm ara..."><span class="muted">${number(filtered.length)} kayıt</span></div><div class="scroll"><table><thead><tr><th>#</th>${head("Aracı","coordinator")}${head("Lead","cards")}${head("Teklif","appointmentBooked")}${head("Satış","salesCards")}${head("Dönüşüm","conversionRate")}<th>En Çok Çalıştığı Satıcı</th><th>En Çok Bölüm</th>${head("Atanmamış","unassignedCards")}</tr></thead><tbody>${filtered.map((r, i) => `<tr><td><span class="rank ${i === 0 ? "gold" : ""}">${i + 1}</span></td><td><b>${esc(r.coordinator)}</b></td><td>${number(r.cards)}</td><td>${number(r.appointmentBooked)}</td><td><b>${number(r.salesCards)}</b></td><td class="${conversionCellTone(r.conversionRate)}">${pct(r.conversionRate)}</td><td>${esc(r.topSeller)} <span class="muted">(${number(r.topSellerCards)})</span></td><td>${esc(r.topDepartment)} <span class="muted">(${number(r.topDepartmentCards)})</span></td><td>${number(r.unassignedCards)}</td></tr>`).join("")}</tbody></table></div>`;
+    return `<div class="table-toolbar"><input id="coordinatorSearch" class="table-search" value="${esc(state.coordinatorSearch)}" placeholder="Aracı, satıcı veya bölüm ara..."><span class="muted">${number(filtered.length)} kayıt</span></div><div class="scroll"><table><thead><tr><th>#</th>${head("Aracı","coordinator")}${head("Lead","cards")}${head("Teklif Adedi","appointmentBooked")}${head("Teklif Tutarı","quoteAmount")}${head("Deal Won Adedi","salesCards")}${head("Deal Won Tutarı","salesAmount")}${head("Dönüşüm","conversionRate")}<th>En Çok Çalıştığı Satıcı</th><th>En Çok Bölüm</th>${head("Atanmamış","unassignedCards")}</tr></thead><tbody>${filtered.map((r, i) => `<tr><td><span class="rank ${i === 0 ? "gold" : ""}">${i + 1}</span></td><td><b>${esc(r.coordinator)}</b></td><td>${number(r.cards)}</td><td>${number(r.appointmentBooked)}</td><td class="money">${money(r.quoteAmount)}</td><td><b>${number(r.salesCards)}</b></td><td class="money">${money(r.salesAmount)}</td><td class="${conversionCellTone(r.conversionRate)}">${pct(r.conversionRate)}</td><td>${esc(r.topSeller)} <span class="muted">(${number(r.topSellerCards)})</span></td><td>${esc(r.topDepartment)} <span class="muted">(${number(r.topDepartmentCards)})</span></td><td>${number(r.unassignedCards)}</td></tr>`).join("")}</tbody></table></div>`;
   }
 
   function conversionCellTone(rate) { const value = Number(rate || 0); return value >= .07 ? "cell-good" : value >= .03 ? "cell-mid" : "cell-bad"; }
@@ -580,25 +580,25 @@
   function coordinatorLeadTable(rows) {
     const sorted = [...(rows || [])].sort((a, b) => Number(b.cards || 0) - Number(a.cards || 0));
     if (!sorted.length) return `<div class="empty">Aracı verisi bulunamadı.</div>`;
-    return `<div class="scroll"><table class="compact-table"><thead><tr><th>Aracı</th><th>Lead</th><th>Satış</th><th>Dönüşüm</th></tr></thead><tbody>${sorted.map(r => `<tr><td><b>${esc(r.coordinator)}</b></td><td>${number(r.cards)}</td><td>${number(r.salesCards)}</td><td class="${conversionCellTone(r.conversionRate)}">${pct(r.conversionRate)}</td></tr>`).join("")}</tbody></table></div>`;
+    return `<div class="scroll"><table class="compact-table"><thead><tr><th>Aracı</th><th>Lead</th><th>Teklif Adedi</th><th>Teklif Tutarı</th><th>Satış Adedi</th><th>Satış Tutarı</th><th>Dönüşüm</th></tr></thead><tbody>${sorted.map(r => `<tr><td><b>${esc(r.coordinator)}</b></td><td>${number(r.cards)}</td><td>${number(r.appointmentBooked)}</td><td class="money">${money(r.quoteAmount)}</td><td>${number(r.salesCards)}</td><td class="money">${money(r.salesAmount)}</td><td class="${conversionCellTone(r.conversionRate)}">${pct(r.conversionRate)}</td></tr>`).join("")}</tbody></table></div>`;
   }
 
   function coordinatorSalesTable(rows) {
     const sorted = [...(rows || [])].sort((a, b) => Number(b.salesCards || 0) - Number(a.salesCards || 0) || Number(b.conversionRate || 0) - Number(a.conversionRate || 0));
     if (!sorted.length) return `<div class="empty">Aracı verisi bulunamadı.</div>`;
-    return `<div class="scroll"><table class="compact-table"><thead><tr><th>Aracı</th><th>Satış</th><th>Lead</th><th>Dönüşüm</th></tr></thead><tbody>${sorted.map(r => `<tr><td><b>${esc(r.coordinator)}</b></td><td>${number(r.salesCards)}</td><td>${number(r.cards)}</td><td class="${conversionCellTone(r.conversionRate)}">${pct(r.conversionRate)}</td></tr>`).join("")}</tbody></table></div>`;
+    return `<div class="scroll"><table class="compact-table"><thead><tr><th>Aracı</th><th>Lead</th><th>Teklif Adedi</th><th>Teklif Tutarı</th><th>Satış Adedi</th><th>Satış Tutarı</th><th>Dönüşüm</th></tr></thead><tbody>${sorted.map(r => `<tr><td><b>${esc(r.coordinator)}</b></td><td>${number(r.cards)}</td><td>${number(r.appointmentBooked)}</td><td class="money">${money(r.quoteAmount)}</td><td>${number(r.salesCards)}</td><td class="money">${money(r.salesAmount)}</td><td class="${conversionCellTone(r.conversionRate)}">${pct(r.conversionRate)}</td></tr>`).join("")}</tbody></table></div>`;
   }
 
   function coordinatorSellerTable(rows) {
     const sorted = [...(rows || [])].sort((a, b) => String(a.coordinator || "").localeCompare(String(b.coordinator || ""), "tr") || Number(b.cards || 0) - Number(a.cards || 0));
     if (!sorted.length) return `<div class="empty">Aracı–satıcı eşleşmesi bulunamadı.</div>`;
-    return `<div class="scroll"><table class="compact-table"><thead><tr><th>Aracı</th><th>Satıcı</th><th>Satıcıya Lead</th><th>Satış</th><th>Dönüşüm</th></tr></thead><tbody>${sorted.map(r => `<tr class="sub-row"><td><b>${esc(r.coordinator)}</b></td><td>${esc(r.sellerLabel || r.seller)}</td><td>${number(r.cards)}</td><td>${number(r.salesCards)}</td><td class="${conversionCellTone(r.conversionRate)}">${pct(r.conversionRate)}</td></tr>`).join("")}</tbody></table></div>`;
+    return `<div class="scroll"><table class="compact-table"><thead><tr><th>Aracı</th><th>Satıcı</th><th>Lead</th><th>Teklif Adedi</th><th>Teklif Tutarı</th><th>Deal Won Adedi</th><th>Deal Won Tutarı</th><th>Dönüşüm</th></tr></thead><tbody>${sorted.map(r => `<tr class="sub-row"><td><b>${esc(r.coordinator)}</b></td><td>${esc(r.sellerLabel || r.seller)}</td><td>${number(r.cards)}</td><td>${number(r.appointmentBooked)}</td><td class="money">${money(r.quoteAmount)}</td><td>${number(r.salesCards)}</td><td class="money">${money(r.salesAmount)}</td><td class="${conversionCellTone(r.conversionRate)}">${pct(r.conversionRate)}</td></tr>`).join("")}</tbody></table></div>`;
   }
 
   function inboundTable(rows, dimension) {
     if (!rows?.length) return `<div class="empty">Veri bulunamadı.</div>`;
     const isSeller = dimension === "seller";
-    return `<div class="scroll"><table><thead><tr><th>${isSeller ? "Satıcı" : "Bölüm"}</th><th>Kart</th><th>Satış Kartı</th><th>Conversion</th><th>En Çok Gönderen Aracı</th></tr></thead><tbody>${rows.map(r => `<tr><td><b>${esc(isSeller ? (r.sellerLabel || r.seller) : r.department)}</b></td><td>${number(r.cards)}</td><td>${number(r.salesCards)}</td><td>${pct(r.conversionRate)}</td><td>${esc(r.topCoordinator)} <span class="muted">(${number(r.topCoordinatorCards)})</span></td></tr>`).join("")}</tbody></table></div>`;
+    return `<div class="scroll"><table><thead><tr><th>${isSeller ? "Satıcı" : "Bölüm"}</th><th>Lead</th><th>Teklif Adedi</th><th>Teklif Tutarı</th><th>Deal Won Adedi</th><th>Deal Won Tutarı</th><th>Conversion</th><th>En Çok Gönderen Aracı</th></tr></thead><tbody>${rows.map(r => `<tr><td><b>${esc(isSeller ? (r.sellerLabel || r.seller) : r.department)}</b></td><td>${number(r.cards)}</td><td>${number(r.quoteCount)}</td><td class="money">${money(r.quoteAmount)}</td><td>${number(r.salesCards)}</td><td class="money">${money(r.salesAmount)}</td><td>${pct(r.conversionRate)}</td><td>${esc(r.topCoordinator)} <span class="muted">(${number(r.topCoordinatorCards)})</span></td></tr>`).join("")}</tbody></table></div>`;
   }
 
   function statusBars(rows) {
@@ -635,11 +635,12 @@
       ${coordinatorFilters(d)}
       <section class="kpis">
         ${kpi("Toplam Lead", number(k.totalCards), "Tekilleştirilmiş", "tone-blue")}
-        ${kpi("Toplam Satış", number(k.salesCards), `Dönüşüm ${pct(k.conversionRate)}`, conversionTone(k.conversionRate))}
+        ${kpi("Teklif Adedi", number(k.appointmentBooked), "", "tone-yellow")}
+        ${kpi("Toplam Teklif Tutarı", money(k.totalQuoteAmount), "USD karşılığı", "tone-yellow")}
+        ${kpi("Satış Adedi", number(k.salesCards), `Dönüşüm ${pct(k.conversionRate)}`, conversionTone(k.conversionRate))}
+        ${kpi("Toplam Satış Tutarı", money(k.totalSalesAmount), "USD karşılığı", "tone-green")}
         ${kpi("Dönüşüm", pct(k.conversionRate), "Lead → satış", conversionTone(k.conversionRate))}
-        ${kpi("Aktif Aracı", number(k.activeCoordinators), "", "tone-purple")}
-        ${kpi("Teklif Verilen", number(k.appointmentBooked), "", "tone-yellow")}
-        ${kpi("Satış Yapılan", number(k.salesCards), `Atanmamış ${number(k.unassignedCards)}`, "tone-green")}
+        ${kpi("Aktif Aracı", number(k.activeCoordinators), `Atanmamış ${number(k.unassignedCards)}`, "tone-purple")}
       </section>
       ${coordinatorVisuals(d.coordinators, k)}
       ${coordinatorSignals(d.coordinators, k)}

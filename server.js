@@ -1183,19 +1183,6 @@ async function loadAppsScriptData() {
     );
   }
 
-  const url =
-    new URL(base);
-
-  url.searchParams.set(
-    "mode",
-    "all"
-  );
-
-  url.searchParams.set(
-    "key",
-    key
-  );
-
   const controller =
     new AbortController();
 
@@ -1208,90 +1195,119 @@ async function loadAppsScriptData() {
     );
 
   try {
-    const response =
-      await fetch(
-        url,
-        {
-          signal:
-            controller.signal,
+    /*
+      Büyük tabloları tek mode=all yanıtında göndermek Google'ın
+      HTML hata sayfası döndürmesine yol açabiliyor. Her sayfayı
+      ayrı çağrıyla alıp sunucuda birleştiriyoruz.
+    */
+    const fetchSheet =
+      async (
+        sheetName
+      ) => {
+        const url =
+          new URL(base);
 
-          redirect:
-            "follow",
+        url.searchParams.set(
+          "sheet",
+          sheetName
+        );
 
-          cache:
-            "no-store"
+        url.searchParams.set(
+          "key",
+          key
+        );
+
+        const response =
+          await fetch(
+            url,
+            {
+              signal:
+                controller.signal,
+
+              redirect:
+                "follow",
+
+              cache:
+                "no-store"
+            }
+          );
+
+        const text =
+          await response.text();
+
+        let data;
+
+        try {
+          data =
+            JSON.parse(text);
+
+        } catch {
+          console.error(
+            `Apps Script JSON olmayan cevap (${sheetName}):`,
+            text.slice(
+              0,
+              500
+            )
+          );
+
+          throw new Error(
+            `Apps Script ${sheetName} verisini geçerli JSON olarak döndürmedi.`
+          );
         }
-      );
 
-    const text =
-      await response.text();
+        if (
+          !response.ok ||
+          data.success ===
+            false
+        ) {
+          throw new Error(
+            data.error ||
+            `Apps Script ${sheetName} HTTP ${response.status}`
+          );
+        }
 
-    let data;
-
-    try {
-      data =
-        JSON.parse(text);
-
-    } catch {
-      console.error(
-        "Apps Script JSON olmayan cevap:",
-        text.slice(
-          0,
-          500
+        return Array.isArray(
+          data.rows
         )
-      );
+          ? data.rows
+          : [];
+      };
 
-      throw new Error(
-        "Apps Script geçerli JSON döndürmedi."
-      );
-    }
+    const [
+      lead,
+      quote,
+      won,
+      targets
+    ] =
+      await Promise.all([
+        fetchSheet(
+          "Ham Lead"
+        ),
 
-    if (
-      !response.ok ||
-      data.success ===
-        false
-    ) {
-      throw new Error(
-        data.error ||
-        `Apps Script HTTP ${response.status}`
-      );
-    }
+        fetchSheet(
+          "Ham Teklif"
+        ),
+
+        fetchSheet(
+          "Ham Deal Won"
+        ),
+
+        fetchSheet(
+          "Hedefler"
+        )
+      ]);
 
     rawCache = {
-      lead:
-        Array.isArray(
-          data.lead
-        )
-          ? data.lead
-          : [],
+      lead,
 
-      quote:
-        Array.isArray(
-          data.quote
-        )
-          ? data.quote
-          : [],
+      quote,
 
-      won:
-        Array.isArray(
-          data.won
-        )
-          ? data.won
-          : [],
+      won,
 
-      targets:
-        Array.isArray(
-          data.targets
-        )
-          ? data.targets
-          : [],
+      targets,
 
       coordinator:
-        Array.isArray(
-          data.coordinator
-        )
-          ? data.coordinator
-          : []
+        []
     };
 
     rawCacheAt =

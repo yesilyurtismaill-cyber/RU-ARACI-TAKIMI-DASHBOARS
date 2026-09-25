@@ -102,10 +102,10 @@
   function shell() {
     document.body.innerHTML = `
       <header class="topbar">
-        <div class="brand"><h1>Bookimed Sales Portal</h1><small>2026 satış ve performans dashboard’u</small></div>
+        <div class="brand"><h1>RU Aracı Takımı Satış Dashboard’u</h1><small>2026 satış ve performans dashboard’u</small></div>
         <div class="top-actions">
           <button class="nav-btn ${state.view === "dashboard" ? "active" : ""}" data-view="dashboard">Satış Dashboard</button>
-          <button class="nav-btn ${state.view === "coordinator" ? "active" : ""}" data-view="coordinator">Koordinatör Analizi</button>
+          <button class="nav-btn ${state.view === "coordinator" ? "active" : ""}" data-view="coordinator">Aracı Dashboard</button>
           <button class="refresh-btn" id="refreshBtn">↻ Yenile</button>
           <button class="logout-btn" id="logoutBtn">Çıkış</button>
         </div>
@@ -158,7 +158,7 @@
     const url = coordinatorUrl();
     if (!force && state.coordinator && state.coordinatorKey === url) { renderCoordinator(); return; }
     state.loading = true;
-    setLoading("Koordinatör verileri yükleniyor...");
+    setLoading("Aracı verileri yükleniyor...");
     const slowNotice = setTimeout(() => {
       if (state.loading) setLoading("Google Sheets verileri hazırlanıyor; ilk bağlantı biraz sürebilir...");
     }, 8000);
@@ -234,7 +234,7 @@
     const o = data.options || {};
     return `<section class="panel"><div class="filters">
       <div><label>Satıcı</label><select id="sellerFilter">${optionHtml(o.sellers, state.filters.seller)}</select></div>
-      <div><label>Koordinatör</label><select id="coordinatorFilter">${optionHtml(o.coordinators, state.filters.coordinator)}</select></div>
+      <div><label>Aracı</label><select id="coordinatorFilter">${optionHtml(o.coordinators, state.filters.coordinator)}</select></div>
       <div><label>Bölüm</label><select id="departmentFilter">${optionHtml(o.departments, state.filters.department)}</select></div>
       <div><label>Doktor</label><select id="doctorFilter">${optionHtml(o.doctors, state.filters.doctor)}</select></div>
       <div><label>Kaynak</label><select id="sourceFilter">${optionHtml(o.sources, state.filters.source)}</select></div>
@@ -341,7 +341,7 @@
     if(state.agingSeller!=="genel") rows=rows.filter(row=>row.seller===state.agingSeller);
     if(state.agingBucket!=="all") rows=rows.filter(row=>{ const n=Number(row.ageMinutes||0); return state.agingBucket==="24h"?n>=1440:state.agingBucket==="48h"?n>=2880:state.agingBucket==="3d"?n>=4320:n>=10080; });
     rows.sort((a,b)=>Number(b.ageMinutes||0)-Number(a.ageMinutes||0)||Number(b.amountUsd||0)-Number(a.amountUsd||0));
-    return rows.length?`<div class="scroll"><table><thead><tr><th>#</th><th>Bitrix ID</th><th>Hasta Adı</th><th>Satıcı</th><th>Koordinatör</th><th>Bölüm</th><th>Doktor</th><th>Son İşlem</th><th>Bekleme</th><th>Teklif</th></tr></thead><tbody>${rows.slice(0,8).map((r,i)=>`<tr><td>${i+1}</td><td><b>${esc(r.id||"-")}</b></td><td><b>${esc(r.patientName||"İsimsiz vaka")}</b></td><td><b>${esc(r.sellerLabel||r.seller||"-")}</b></td><td>${esc(r.coordinator||"-")}</td><td>${esc(r.department||"-")}</td><td>${esc(r.doctor||"-")}</td><td>${esc(r.quoteDate||"-")}</td><td><span class="age-pill ${ageClass(r.ageMinutes)}">${ageLabel(r.ageMinutes)}</span></td><td class="money">${money(r.amountUsd)}</td></tr>`).join("")}</tbody></table></div>`:`<div class="empty">Bu bekleme aralığında vaka bulunamadı.</div>`;
+    return rows.length?`<div class="scroll"><table><thead><tr><th>#</th><th>Bitrix ID</th><th>Hasta Adı</th><th>Satıcı</th><th>Aracı</th><th>Bölüm</th><th>Doktor</th><th>Son İşlem</th><th>Bekleme</th><th>Teklif</th></tr></thead><tbody>${rows.slice(0,8).map((r,i)=>`<tr><td>${i+1}</td><td><b>${esc(r.id||"-")}</b></td><td><b>${esc(r.patientName||"İsimsiz vaka")}</b></td><td><b>${esc(r.sellerLabel||r.seller||"-")}</b></td><td>${esc(r.coordinator||"-")}</td><td>${esc(r.department||"-")}</td><td>${esc(r.doctor||"-")}</td><td>${esc(r.quoteDate||"-")}</td><td><span class="age-pill ${ageClass(r.ageMinutes)}">${ageLabel(r.ageMinutes)}</span></td><td class="money">${money(r.amountUsd)}</td></tr>`).join("")}</tbody></table></div>`:`<div class="empty">Bu bekleme aralığında vaka bulunamadı.</div>`;
   }
 
   function slowResponseCases(rows) {
@@ -418,7 +418,7 @@
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = matchedName || `Bookimed_Filtreli_Buyuk_Vakalar_${datePart}.xlsx`;
+      link.download = matchedName || `RU_Araci_Takimi_Filtreli_Buyuk_Vakalar_${datePart}.xlsx`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -455,7 +455,7 @@
         <span class="case-date-note">${esc(state.period === "genel" ? "2026 genel verisi içinde filtreler" : `${MONTHS[Number(state.period)] || "Seçili ay"} verisi içinde filtreler`)}</span>
       </div>
       <div class="panel-head"><span class="muted">En yüksek tutarlı ilk 10 açık dosya</span><b>${number(rows.length)} dosya · ${money(total)}</b></div>
-      ${rows.length ? `<div class="scroll"><table><thead><tr><th>#</th><th>Bitrix ID</th><th>Hasta Adı</th><th>Satıcı</th><th>Bölüm</th><th>Doktor</th><th>Koordinatör</th><th>Teklif Tarihi</th><th>Tutar</th></tr></thead><tbody>${rows.map((r, i) => { const tone = caseTone(r.amountUsd); return `<tr class="${tone.row}"><td><span class="rank ${i === 0 ? "gold" : ""}">${i + 1}</span></td><td><b>${esc(r.id || "-")}</b></td><td><b>${esc(r.patientName || "İsimsiz vaka")}</b></td><td><b>${esc(r.sellerLabel || r.seller)}</b></td><td>${esc(r.department || "-")}</td><td>${esc(r.doctor || "-")}</td><td>${esc(r.coordinator || "-")}</td><td>${esc(r.quoteDate || "-")}</td><td><span class="amount-pill ${tone.pill}">${money(r.amountUsd)}</span></td></tr>`; }).join("")}</tbody></table></div>` : `<div class="empty">Seçilen kriterlerde açık dosya bulunamadı.</div>`}`;
+      ${rows.length ? `<div class="scroll"><table><thead><tr><th>#</th><th>Bitrix ID</th><th>Hasta Adı</th><th>Satıcı</th><th>Bölüm</th><th>Doktor</th><th>Aracı</th><th>Teklif Tarihi</th><th>Tutar</th></tr></thead><tbody>${rows.map((r, i) => { const tone = caseTone(r.amountUsd); return `<tr class="${tone.row}"><td><span class="rank ${i === 0 ? "gold" : ""}">${i + 1}</span></td><td><b>${esc(r.id || "-")}</b></td><td><b>${esc(r.patientName || "İsimsiz vaka")}</b></td><td><b>${esc(r.sellerLabel || r.seller)}</b></td><td>${esc(r.department || "-")}</td><td>${esc(r.doctor || "-")}</td><td>${esc(r.coordinator || "-")}</td><td>${esc(r.quoteDate || "-")}</td><td><span class="amount-pill ${tone.pill}">${money(r.amountUsd)}</span></td></tr>`; }).join("")}</tbody></table></div>` : `<div class="empty">Seçilen kriterlerde açık dosya bulunamadı.</div>`}`;
   }
 
   function speedPanel(data) {
@@ -474,7 +474,7 @@
     const k = d.kpis || {};
     $("#appContent").innerHTML = `
       <section class="dashboard-hero">
-        <div><h2>Bookimed Satış Dashboard</h2><p>Lead, teklif, satış, hedef ve ekip performansının tek ekranda güncel görünümü</p></div>
+        <div><h2>RU Aracı Takımı Satış Dashboard’u</h2><p>Lead, teklif, satış, hedef ve ekip performansının tek ekranda güncel görünümü</p></div>
         <div class="hero-badge"><span>Son güncelleme</span><b>${esc(new Date(d.updatedAt).toLocaleString("tr-TR"))}</b></div>
       </section>
       ${periodTabs()}
@@ -558,7 +558,7 @@
   function coordinatorFilters(data) {
     const o = data.options || {};
     return `<section class="panel"><div class="filters">
-      <div><label>Koordinatör</label><select id="cCoordinator">${optionHtml(o.coordinators, state.coordinatorFilters.coordinator)}</select></div>
+      <div><label>Aracı</label><select id="cCoordinator">${optionHtml(o.coordinators, state.coordinatorFilters.coordinator)}</select></div>
       <div><label>Satıcı</label><select id="cSeller">${optionHtml(o.sellers, state.coordinatorFilters.seller)}</select></div>
       <div><label>Bölüm</label><select id="cDepartment">${optionHtml(o.departments, state.coordinatorFilters.department)}</select></div>
       <div><label>Statü</label><select id="cStatus">${optionHtml(o.statuses, state.coordinatorFilters.status)}</select></div>
@@ -567,38 +567,38 @@
   }
 
   function coordinatorTable(rows) {
-    if (!rows?.length) return `<div class="empty">Koordinatör verisi bulunamadı.</div>`;
+    if (!rows?.length) return `<div class="empty">Aracı verisi bulunamadı.</div>`;
     const query=state.coordinatorSearch.trim().toLocaleLowerCase("tr-TR");
     const key=state.coordinatorSort.key, dir=state.coordinatorSort.dir==="asc"?1:-1;
     const filtered=rows.filter(r=>!query||[r.coordinator,r.topSeller,r.topDepartment].some(v=>String(v||"").toLocaleLowerCase("tr-TR").includes(query))).sort((a,b)=>{const av=a[key],bv=b[key];return (typeof av==="number"&&typeof bv==="number"?av-bv:String(av||"").localeCompare(String(bv||""),"tr"))*dir;});
     const head=(label,field)=>`<th class="sortable" data-coordinator-sort="${field}">${label}${key===field?`<span class="sort-indicator">${dir===1?"▲":"▼"}</span>`:""}</th>`;
-    return `<div class="table-toolbar"><input id="coordinatorSearch" class="table-search" value="${esc(state.coordinatorSearch)}" placeholder="Koordinatör, satıcı veya bölüm ara..."><span class="muted">${number(filtered.length)} kayıt</span></div><div class="scroll"><table><thead><tr><th>#</th>${head("Koordinatör","coordinator")}${head("Lead","cards")}${head("App. Booked","appointmentBooked")}${head("Arrived","arrived")}${head("Successful","successful")}${head("Satış","salesCards")}${head("Dönüşüm","conversionRate")}<th>En Çok Çalıştığı Satıcı</th><th>En Çok Bölüm</th>${head("Atanmamış","unassignedCards")}</tr></thead><tbody>${filtered.map((r, i) => `<tr><td><span class="rank ${i === 0 ? "gold" : ""}">${i + 1}</span></td><td><b>${esc(r.coordinator)}</b></td><td>${number(r.cards)}</td><td>${number(r.appointmentBooked)}</td><td>${number(r.arrived)}</td><td>${number(r.successful)}</td><td><b>${number(r.salesCards)}</b></td><td class="${conversionCellTone(r.conversionRate)}">${pct(r.conversionRate)}</td><td>${esc(r.topSeller)} <span class="muted">(${number(r.topSellerCards)})</span></td><td>${esc(r.topDepartment)} <span class="muted">(${number(r.topDepartmentCards)})</span></td><td>${number(r.unassignedCards)}</td></tr>`).join("")}</tbody></table></div>`;
+    return `<div class="table-toolbar"><input id="coordinatorSearch" class="table-search" value="${esc(state.coordinatorSearch)}" placeholder="Aracı, satıcı veya bölüm ara..."><span class="muted">${number(filtered.length)} kayıt</span></div><div class="scroll"><table><thead><tr><th>#</th>${head("Aracı","coordinator")}${head("Lead","cards")}${head("Teklif","appointmentBooked")}${head("Satış","salesCards")}${head("Dönüşüm","conversionRate")}<th>En Çok Çalıştığı Satıcı</th><th>En Çok Bölüm</th>${head("Atanmamış","unassignedCards")}</tr></thead><tbody>${filtered.map((r, i) => `<tr><td><span class="rank ${i === 0 ? "gold" : ""}">${i + 1}</span></td><td><b>${esc(r.coordinator)}</b></td><td>${number(r.cards)}</td><td>${number(r.appointmentBooked)}</td><td><b>${number(r.salesCards)}</b></td><td class="${conversionCellTone(r.conversionRate)}">${pct(r.conversionRate)}</td><td>${esc(r.topSeller)} <span class="muted">(${number(r.topSellerCards)})</span></td><td>${esc(r.topDepartment)} <span class="muted">(${number(r.topDepartmentCards)})</span></td><td>${number(r.unassignedCards)}</td></tr>`).join("")}</tbody></table></div>`;
   }
 
   function conversionCellTone(rate) { const value = Number(rate || 0); return value >= .07 ? "cell-good" : value >= .03 ? "cell-mid" : "cell-bad"; }
 
   function coordinatorLeadTable(rows) {
     const sorted = [...(rows || [])].sort((a, b) => Number(b.cards || 0) - Number(a.cards || 0));
-    if (!sorted.length) return `<div class="empty">Koordinatör verisi bulunamadı.</div>`;
-    return `<div class="scroll"><table class="compact-table"><thead><tr><th>Koordinatör</th><th>Lead</th><th>Satış</th><th>Dönüşüm</th></tr></thead><tbody>${sorted.map(r => `<tr><td><b>${esc(r.coordinator)}</b></td><td>${number(r.cards)}</td><td>${number(r.salesCards)}</td><td class="${conversionCellTone(r.conversionRate)}">${pct(r.conversionRate)}</td></tr>`).join("")}</tbody></table></div>`;
+    if (!sorted.length) return `<div class="empty">Aracı verisi bulunamadı.</div>`;
+    return `<div class="scroll"><table class="compact-table"><thead><tr><th>Aracı</th><th>Lead</th><th>Satış</th><th>Dönüşüm</th></tr></thead><tbody>${sorted.map(r => `<tr><td><b>${esc(r.coordinator)}</b></td><td>${number(r.cards)}</td><td>${number(r.salesCards)}</td><td class="${conversionCellTone(r.conversionRate)}">${pct(r.conversionRate)}</td></tr>`).join("")}</tbody></table></div>`;
   }
 
   function coordinatorSalesTable(rows) {
     const sorted = [...(rows || [])].sort((a, b) => Number(b.salesCards || 0) - Number(a.salesCards || 0) || Number(b.conversionRate || 0) - Number(a.conversionRate || 0));
-    if (!sorted.length) return `<div class="empty">Koordinatör verisi bulunamadı.</div>`;
-    return `<div class="scroll"><table class="compact-table"><thead><tr><th>Koordinatör</th><th>Satış</th><th>Lead</th><th>Dönüşüm</th></tr></thead><tbody>${sorted.map(r => `<tr><td><b>${esc(r.coordinator)}</b></td><td>${number(r.salesCards)}</td><td>${number(r.cards)}</td><td class="${conversionCellTone(r.conversionRate)}">${pct(r.conversionRate)}</td></tr>`).join("")}</tbody></table></div>`;
+    if (!sorted.length) return `<div class="empty">Aracı verisi bulunamadı.</div>`;
+    return `<div class="scroll"><table class="compact-table"><thead><tr><th>Aracı</th><th>Satış</th><th>Lead</th><th>Dönüşüm</th></tr></thead><tbody>${sorted.map(r => `<tr><td><b>${esc(r.coordinator)}</b></td><td>${number(r.salesCards)}</td><td>${number(r.cards)}</td><td class="${conversionCellTone(r.conversionRate)}">${pct(r.conversionRate)}</td></tr>`).join("")}</tbody></table></div>`;
   }
 
   function coordinatorSellerTable(rows) {
     const sorted = [...(rows || [])].sort((a, b) => String(a.coordinator || "").localeCompare(String(b.coordinator || ""), "tr") || Number(b.cards || 0) - Number(a.cards || 0));
-    if (!sorted.length) return `<div class="empty">Koordinatör–satıcı eşleşmesi bulunamadı.</div>`;
-    return `<div class="scroll"><table class="compact-table"><thead><tr><th>Koordinatör</th><th>Satıcı</th><th>Satıcıya Lead</th><th>Satış</th><th>Dönüşüm</th></tr></thead><tbody>${sorted.map(r => `<tr class="sub-row"><td><b>${esc(r.coordinator)}</b></td><td>${esc(r.sellerLabel || r.seller)}</td><td>${number(r.cards)}</td><td>${number(r.salesCards)}</td><td class="${conversionCellTone(r.conversionRate)}">${pct(r.conversionRate)}</td></tr>`).join("")}</tbody></table></div>`;
+    if (!sorted.length) return `<div class="empty">Aracı–satıcı eşleşmesi bulunamadı.</div>`;
+    return `<div class="scroll"><table class="compact-table"><thead><tr><th>Aracı</th><th>Satıcı</th><th>Satıcıya Lead</th><th>Satış</th><th>Dönüşüm</th></tr></thead><tbody>${sorted.map(r => `<tr class="sub-row"><td><b>${esc(r.coordinator)}</b></td><td>${esc(r.sellerLabel || r.seller)}</td><td>${number(r.cards)}</td><td>${number(r.salesCards)}</td><td class="${conversionCellTone(r.conversionRate)}">${pct(r.conversionRate)}</td></tr>`).join("")}</tbody></table></div>`;
   }
 
   function inboundTable(rows, dimension) {
     if (!rows?.length) return `<div class="empty">Veri bulunamadı.</div>`;
     const isSeller = dimension === "seller";
-    return `<div class="scroll"><table><thead><tr><th>${isSeller ? "Satıcı" : "Bölüm"}</th><th>Kart</th><th>Satış Kartı</th><th>Conversion</th><th>En Çok Gönderen Koordinatör</th></tr></thead><tbody>${rows.map(r => `<tr><td><b>${esc(isSeller ? (r.sellerLabel || r.seller) : r.department)}</b></td><td>${number(r.cards)}</td><td>${number(r.salesCards)}</td><td>${pct(r.conversionRate)}</td><td>${esc(r.topCoordinator)} <span class="muted">(${number(r.topCoordinatorCards)})</span></td></tr>`).join("")}</tbody></table></div>`;
+    return `<div class="scroll"><table><thead><tr><th>${isSeller ? "Satıcı" : "Bölüm"}</th><th>Kart</th><th>Satış Kartı</th><th>Conversion</th><th>En Çok Gönderen Aracı</th></tr></thead><tbody>${rows.map(r => `<tr><td><b>${esc(isSeller ? (r.sellerLabel || r.seller) : r.department)}</b></td><td>${number(r.cards)}</td><td>${number(r.salesCards)}</td><td>${pct(r.conversionRate)}</td><td>${esc(r.topCoordinator)} <span class="muted">(${number(r.topCoordinatorCards)})</span></td></tr>`).join("")}</tbody></table></div>`;
   }
 
   function statusBars(rows) {
@@ -609,9 +609,9 @@
   function coordinatorVisuals(rows, kpis) {
     const top=[...(rows||[])].sort((a,b)=>Number(b.salesCards||0)-Number(a.salesCards||0)||Number(b.cards||0)-Number(a.cards||0)).slice(0,10);
     const max=Math.max(1,...top.map(r=>Number(r.cards||0)));
-    const chart=top.map(r=>{const booked=Number(r.appointmentBooked||0),arrived=Number(r.arrived||0),success=Number(r.successful||0);return `<div class="coord-row"><div class="coord-name" title="${esc(r.coordinator)}">${esc(r.coordinator)}</div><div class="coord-stack" title="Appointment ${booked} · Arrived ${arrived} · Successful ${success}" style="width:${Math.max(8,Number(r.cards||0)/max*100)}%"><i class="booked" style="width:${booked/Math.max(1,booked+arrived+success)*100}%"></i><i class="arrived" style="width:${arrived/Math.max(1,booked+arrived+success)*100}%"></i><i class="success" style="width:${success/Math.max(1,booked+arrived+success)*100}%"></i></div><div class="coord-values">${number(r.salesCards)} satış / ${number(r.cards)} lead</div></div>`;}).join("");
+    const chart=top.map(r=>{const quoted=Number(r.appointmentBooked||0),sales=Number(r.salesCards||0);return `<div class="coord-row"><div class="coord-name" title="${esc(r.coordinator)}">${esc(r.coordinator)}</div><div class="coord-stack" title="Teklif ${quoted} · Satış ${sales}" style="width:${Math.max(8,Number(r.cards||0)/max*100)}%"><i class="booked" style="width:${quoted/Math.max(1,quoted+sales)*100}%"></i><i class="success" style="width:${sales/Math.max(1,quoted+sales)*100}%"></i></div><div class="coord-values">${number(r.salesCards)} satış / ${number(r.cards)} lead</div></div>`;}).join("");
     const conversion=Number(kpis?.conversionRate||0)*100;
-    return `<div class="grid-2"><section class="panel"><div class="panel-head"><h3>Koordinatör Satış Akışı</h3><span class="muted">İlk 10 koordinatör</span></div><div class="coord-chart">${chart||`<div class="empty">Veri bulunamadı.</div>`}</div><div class="legend"><span><i style="background:#d6a72c"></i>Appointment Booked</span><span><i style="background:#438dcc"></i>Arrived</span><span><i style="background:#289266"></i>Successful</span></div></section><section class="panel"><div class="panel-head"><h3>Genel Satış Dönüşümü</h3><span class="muted">Satış kartı / toplam lead</span></div><div class="panel-body"><div class="share-ring" style="--p:${Math.min(100,conversion)}"><b>${conversion.toFixed(1)}%</b><span>DÖNÜŞÜM</span></div><div class="bars" style="margin-top:22px"><div class="bar-row"><div class="bar-label">Appointment</div><div class="bar-track"><div class="bar-fill" style="width:${Number(kpis.totalCards)?Number(kpis.appointmentBooked)/Number(kpis.totalCards)*100:0}%"></div></div><div class="bar-value">${number(kpis.appointmentBooked)}</div></div><div class="bar-row"><div class="bar-label">Arrived</div><div class="bar-track"><div class="bar-fill" style="width:${Number(kpis.totalCards)?Number(kpis.arrived)/Number(kpis.totalCards)*100:0}%"></div></div><div class="bar-value">${number(kpis.arrived)}</div></div><div class="bar-row"><div class="bar-label">Successful</div><div class="bar-track"><div class="bar-fill" style="width:${Number(kpis.totalCards)?Number(kpis.successful)/Number(kpis.totalCards)*100:0}%"></div></div><div class="bar-value">${number(kpis.successful)}</div></div></div></div></section></div>`;
+    return `<div class="grid-2"><section class="panel"><div class="panel-head"><h3>Aracı Satış Akışı</h3><span class="muted">İlk 10 aracı</span></div><div class="coord-chart">${chart||`<div class="empty">Veri bulunamadı.</div>`}</div><div class="legend"><span><i style="background:#d6a72c"></i>Teklif</span><span><i style="background:#289266"></i>Satış</span></div></section><section class="panel"><div class="panel-head"><h3>Genel Satış Dönüşümü</h3><span class="muted">Satış / toplam lead</span></div><div class="panel-body"><div class="share-ring" style="--p:${Math.min(100,conversion)}"><b>${conversion.toFixed(1)}%</b><span>DÖNÜŞÜM</span></div><div class="bars" style="margin-top:22px"><div class="bar-row"><div class="bar-label">Teklif</div><div class="bar-track"><div class="bar-fill" style="width:${Number(kpis.totalCards)?Number(kpis.appointmentBooked)/Number(kpis.totalCards)*100:0}%"></div></div><div class="bar-value">${number(kpis.appointmentBooked)}</div></div><div class="bar-row"><div class="bar-label">Satış</div><div class="bar-track"><div class="bar-fill" style="width:${Number(kpis.totalCards)?Number(kpis.salesCards)/Number(kpis.totalCards)*100:0}%"></div></div><div class="bar-value">${number(kpis.salesCards)}</div></div></div></div></section></div>`;
   }
 
   function coordinatorSignals(rows, kpis) {
@@ -621,7 +621,7 @@
     const red=list.filter(r=>Number(r.cards||0)>=Math.max(5,avgLead)&&Number(r.salesCards||0)===0).sort((a,b)=>Number(b.cards||0)-Number(a.cards||0)).slice(0,8);
     let strong=list.filter(r=>Number(r.cards||0)>=5&&Number(r.salesCards||0)>0&&Number(r.conversionRate||0)>=Math.max(.08,teamRate)).sort((a,b)=>Number(b.conversionRate||0)-Number(a.conversionRate||0)||Number(b.salesCards||0)-Number(a.salesCards||0)).slice(0,8);
     if(!strong.length) strong=list.filter(r=>Number(r.cards||0)>=3&&Number(r.salesCards||0)>0).sort((a,b)=>Number(b.conversionRate||0)-Number(a.conversionRate||0)).slice(0,8);
-    const items=(rows,tone)=>rows.length?`<div class="signal-list">${rows.map(r=>`<div class="signal-item"><strong>${esc(r.coordinator)}</strong><div class="signal-metric"><span>Lead</span><b>${number(r.cards)}</b></div><div class="signal-metric"><span>Satış</span><b>${number(r.salesCards)}</b></div><div class="signal-metric"><span>Dönüşüm</span><b class="${tone==="red"?"cell-bad":"cell-good"}" style="padding:4px 6px;border-radius:6px">${pct(r.conversionRate)}</b></div></div>`).join("")}</div>`:`<div class="signal-empty">Bu kriterde koordinatör bulunmuyor.</div>`;
+    const items=(rows,tone)=>rows.length?`<div class="signal-list">${rows.map(r=>`<div class="signal-item"><strong>${esc(r.coordinator)}</strong><div class="signal-metric"><span>Lead</span><b>${number(r.cards)}</b></div><div class="signal-metric"><span>Satış</span><b>${number(r.salesCards)}</b></div><div class="signal-metric"><span>Dönüşüm</span><b class="${tone==="red"?"cell-bad":"cell-good"}" style="padding:4px 6px;border-radius:6px">${pct(r.conversionRate)}</b></div></div>`).join("")}</div>`:`<div class="signal-empty">Bu kriterde aracı bulunmuyor.</div>`;
     return `<section class="signal-grid"><article class="panel signal-panel"><div class="signal-head red">⚑ Red Flag — Yüksek Lead, Satış Yok</div>${items(red,"red")}</article><article class="panel signal-panel"><div class="signal-head green">★ Güçlü Performans — Yüksek Dönüşüm</div>${items(strong,"green")}</article></section>`;
   }
 
@@ -629,25 +629,24 @@
     const d = state.coordinator;
     const k = d.kpis || {};
     $("#appContent").innerHTML = `
-      <div class="view-title"><h2>Koordinatör Analizi</h2><span class="updated">${esc(state.coordinatorPeriod === "genel" ? "2026 Genel" : MONTHS[Number(state.coordinatorPeriod)] || "2026")} · ${esc(new Date(d.updatedAt).toLocaleString("tr-TR"))}</span></div>
-      <div class="notice"><b>Satış kartı tanımı:</b> Appointment Booked + Arrived + Successful. Kayıtlar Bookimed ID bazında tekilleştirilir.</div>
+      <div class="view-title"><h2>Aracı Dashboard</h2><span class="updated">${esc(state.coordinatorPeriod === "genel" ? "2026 Genel" : MONTHS[Number(state.coordinatorPeriod)] || "2026")} · ${esc(new Date(d.updatedAt).toLocaleString("tr-TR"))}</span></div>
+      <div class="notice"><b>Hesaplama:</b> Aracı bilgisi Source HBYS alanından alınır. Lead, teklif ve satış kayıtları Bitrix ID bazında tekilleştirilir.</div>
       ${coordinatorPeriodTabs()}
       ${coordinatorFilters(d)}
       <section class="kpis">
         ${kpi("Toplam Lead", number(k.totalCards), "Tekilleştirilmiş", "tone-blue")}
         ${kpi("Toplam Satış", number(k.salesCards), `Dönüşüm ${pct(k.conversionRate)}`, conversionTone(k.conversionRate))}
         ${kpi("Dönüşüm", pct(k.conversionRate), "Lead → satış", conversionTone(k.conversionRate))}
-        ${kpi("Aktif Koordinatör", number(k.activeCoordinators), "", "tone-purple")}
-        ${kpi("Appointment Booked", number(k.appointmentBooked), "", "tone-yellow")}
-        ${kpi("Arrived", number(k.arrived), "", "tone-blue")}
-        ${kpi("Successful", number(k.successful), `Atanmamış ${number(k.unassignedCards)}`, "tone-green")}
+        ${kpi("Aktif Aracı", number(k.activeCoordinators), "", "tone-purple")}
+        ${kpi("Teklif Verilen", number(k.appointmentBooked), "", "tone-yellow")}
+        ${kpi("Satış Yapılan", number(k.salesCards), `Atanmamış ${number(k.unassignedCards)}`, "tone-green")}
       </section>
       ${coordinatorVisuals(d.coordinators, k)}
       ${coordinatorSignals(d.coordinators, k)}
-      <section class="panel"><div class="panel-head"><h3>Koordinatör Performans Tablosu</h3><span class="muted">Başlıklara tıklayarak sıralayın</span></div>${coordinatorTable(d.coordinators)}</section>
+      <section class="panel"><div class="panel-head"><h3>Aracı Performans Tablosu</h3><span class="muted">Başlıklara tıklayarak sıralayın</span></div>${coordinatorTable(d.coordinators)}</section>
       <div class="grid-2">
-        <section class="panel"><div class="section-band band-gold">KOORDİNATÖR → SATIŞ EKİBİ KIRILIMI</div>${coordinatorSellerTable(d.coordinatorToSeller)}</section>
-        <section class="panel"><div class="section-band band-purple">HASTANE SATICILARI – BOOKIMED PERFORMANSI</div>${inboundTable(d.sellerInbound, "seller")}</section>
+        <section class="panel"><div class="section-band band-gold">ARACI → SATIŞ EKİBİ KIRILIMI</div>${coordinatorSellerTable(d.coordinatorToSeller)}</section>
+        <section class="panel"><div class="section-band band-purple">SATIŞ EKİBİ – ARACI PERFORMANSI</div>${inboundTable(d.sellerInbound, "seller")}</section>
       </div>
       <div class="grid-2">
         <section class="panel"><div class="panel-head"><h3>Statü Dağılımı</h3></div><div class="panel-body">${statusBars(d.statusBreakdown)}</div></section>

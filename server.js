@@ -1876,9 +1876,13 @@ function normalizeLeadRow(
     newLeadDate ||
     startDate;
 
+  /*
+    Lead'in ait olduğu ay önce gerçek New Lead geliş tarihidir.
+    Bu alan yoksa Başlangıç tarihi yedek olarak kullanılır.
+  */
   const date =
-    startDate ||
-    newLeadDate;
+    newLeadDate ||
+    startDate;
 
   const parts =
     dateParts(date);
@@ -5439,7 +5443,7 @@ function topEntry(
   };
 }
 
-function buildCoordinatorAnalysis(
+function buildCoordinatorAnalysisLegacy(
   data,
   query,
   user
@@ -6367,6 +6371,401 @@ function buildCoordinatorAnalysis(
 
       period:
         "Ay seçimi Ham Lead sayfasındaki YD New Lead - Arrived Time; bu alan boşsa Başlangıç tarihi üzerinden yapılır."
+    }
+  };
+}
+
+/*
+  Aracı ekranında her metrik kendi gerçek olay tarihine göre hesaplanır:
+  - Lead: Ham Lead / New Lead (yoksa Başlangıç)
+  - Teklif: Ham Teklif / Quoted Arrived Time
+  - Satış: Ham Deal Won / Deal Won Arrived Time
+
+  Böylece aynı ay filtresinde satış adedi ana Satış Dashboard'u ile aynıdır.
+*/
+function buildCoordinatorAnalysis(
+  data,
+  query,
+  user
+) {
+  const filters = {
+    period: String(query.period || "genel"),
+    coordinator: cleanText(query.coordinator || "Tümü"),
+    seller: cleanText(query.seller || "Tümü"),
+    department: cleanText(query.department || "Tümü"),
+    status: cleanText(query.status || "Tümü")
+  };
+
+  const ownSeller =
+    user?.role === "seller" && user.seller
+      ? userSellerKey(user)
+      : "";
+
+  function eventMatches(row, eventType) {
+    if (!row.coordinator) {
+      return false;
+    }
+
+    if (ownSeller && row.seller !== ownSeller) {
+      return false;
+    }
+
+    if (
+      filters.period !== "genel" &&
+      (
+        row.year !== YEAR ||
+        row.month !== Number(filters.period)
+      )
+    ) {
+      return false;
+    }
+
+    if (
+      filters.coordinator !== "Tümü" &&
+      row.coordinator !== filters.coordinator
+    ) {
+      return false;
+    }
+
+    if (
+      filters.seller !== "Tümü" &&
+      row.seller !== filters.seller
+    ) {
+      return false;
+    }
+
+    if (
+      filters.department !== "Tümü" &&
+      row.department !== filters.department
+    ) {
+      return false;
+    }
+
+    if (
+      filters.status !== "Tümü" &&
+      normalizeText(filters.status) !== eventType
+    ) {
+      return false;
+    }
+
+    return true;
+  }
+
+  const leadRows =
+    data.leadRows.filter(row => eventMatches(row, "lead"));
+
+  const quoteRows =
+    data.quoteRows.filter(row => eventMatches(row, "teklif"));
+
+  const wonRows =
+    data.wonRows.filter(row => eventMatches(row, "satis"));
+
+  const byCoordinator = new Map();
+  const bySeller = new Map();
+  const byDepartment = new Map();
+  const coordinatorSeller = new Map();
+  const coordinatorDepartment = new Map();
+
+  function ensureBucket(map, key, factory) {
+    if (!map.has(key)) {
+      map.set(key, factory());
+    }
+
+    return map.get(key);
+  }
+
+  function addEvent(row, eventType) {
+    const coordinator = ensureBucket(
+      byCoordinator,
+      row.coordinator,
+      () => ({
+        coordinator: row.coordinator,
+        cards: 0,
+        appointmentBooked: 0,
+        arrived: 0,
+        successful: 0,
+        salesCards: 0,
+        quoteAmount: 0,
+        salesAmount: 0,
+        sellerCounts: new Map(),
+        departmentCounts: new Map(),
+        unassignedCards: 0
+      })
+    );
+
+    const seller = ensureBucket(
+      bySeller,
+      row.seller,
+      () => ({
+        seller: row.seller,
+        sellerLabel: row.sellerLabel,
+        cards: 0,
+        quoteCount: 0,
+        salesCards: 0,
+        quoteAmount: 0,
+        salesAmount: 0,
+        coordinatorCounts: new Map()
+      })
+    );
+
+    const department = ensureBucket(
+      byDepartment,
+      row.department || "Belirsiz",
+      () => ({
+        department: row.department || "Belirsiz",
+        cards: 0,
+        quoteCount: 0,
+        salesCards: 0,
+        quoteAmount: 0,
+        salesAmount: 0,
+        coordinatorCounts: new Map()
+      })
+    );
+
+    const sellerCross = ensureBucket(
+      coordinatorSeller,
+      `${row.coordinator}\u0000${row.seller}`,
+      () => ({
+        coordinator: row.coordinator,
+        seller: row.seller,
+        sellerLabel: row.sellerLabel,
+        cards: 0,
+        salesCards: 0,
+        appointmentBooked: 0,
+        quoteAmount: 0,
+        salesAmount: 0,
+        arrived: 0,
+        successful: 0
+      })
+    );
+
+    const departmentName = row.department || "Belirsiz";
+    const departmentCross = ensureBucket(
+      coordinatorDepartment,
+      `${row.coordinator}\u0000${departmentName}`,
+      () => ({
+        coordinator: row.coordinator,
+        department: departmentName,
+        cards: 0,
+        salesCards: 0,
+        appointmentBooked: 0,
+        quoteAmount: 0,
+        salesAmount: 0,
+        arrived: 0,
+        successful: 0
+      })
+    );
+
+    if (eventType === "lead") {
+      coordinator.cards += 1;
+      seller.cards += 1;
+      department.cards += 1;
+      sellerCross.cards += 1;
+      departmentCross.cards += 1;
+
+      coordinator.sellerCounts.set(
+        row.seller,
+        (coordinator.sellerCounts.get(row.seller) || 0) + 1
+      );
+
+      coordinator.departmentCounts.set(
+        departmentName,
+        (coordinator.departmentCounts.get(departmentName) || 0) + 1
+      );
+
+      seller.coordinatorCounts.set(
+        row.coordinator,
+        (seller.coordinatorCounts.get(row.coordinator) || 0) + 1
+      );
+
+      department.coordinatorCounts.set(
+        row.coordinator,
+        (department.coordinatorCounts.get(row.coordinator) || 0) + 1
+      );
+
+      if (isUnassignedSeller(row.seller)) {
+        coordinator.unassignedCards += 1;
+      }
+
+    } else if (eventType === "teklif") {
+      const amount = Number(row.amountUsd || 0);
+
+      coordinator.appointmentBooked += 1;
+      coordinator.quoteAmount += amount;
+      seller.quoteCount += 1;
+      seller.quoteAmount += amount;
+      department.quoteCount += 1;
+      department.quoteAmount += amount;
+      sellerCross.appointmentBooked += 1;
+      sellerCross.quoteAmount += amount;
+      departmentCross.appointmentBooked += 1;
+      departmentCross.quoteAmount += amount;
+
+    } else if (eventType === "satis") {
+      const amount = Number(row.amountUsd || 0);
+
+      coordinator.successful += 1;
+      coordinator.salesCards += 1;
+      coordinator.salesAmount += amount;
+      seller.salesCards += 1;
+      seller.salesAmount += amount;
+      department.salesCards += 1;
+      department.salesAmount += amount;
+      sellerCross.successful += 1;
+      sellerCross.salesCards += 1;
+      sellerCross.salesAmount += amount;
+      departmentCross.successful += 1;
+      departmentCross.salesCards += 1;
+      departmentCross.salesAmount += amount;
+    }
+  }
+
+  leadRows.forEach(row => addEvent(row, "lead"));
+  quoteRows.forEach(row => addEvent(row, "teklif"));
+  wonRows.forEach(row => addEvent(row, "satis"));
+
+  const coordinators = [...byCoordinator.values()]
+    .map(coordinator => {
+      const topSeller = topEntry(
+        coordinator.sellerCounts,
+        { ignoreUnassigned: true }
+      );
+      const topDepartment = topEntry(coordinator.departmentCounts);
+
+      return {
+        coordinator: coordinator.coordinator,
+        cards: coordinator.cards,
+        appointmentBooked: coordinator.appointmentBooked,
+        arrived: coordinator.arrived,
+        successful: coordinator.successful,
+        salesCards: coordinator.salesCards,
+        quoteAmount: coordinator.quoteAmount,
+        salesAmount: coordinator.salesAmount,
+        conversionRate: ratio(coordinator.salesCards, coordinator.cards),
+        unassignedCards: coordinator.unassignedCards,
+        topSeller: anySellerLabel(topSeller.name),
+        topSellerKey: topSeller.name,
+        topSellerCards: topSeller.count,
+        topDepartment: topDepartment.name,
+        topDepartmentCards: topDepartment.count
+      };
+    })
+    .sort((a, b) =>
+      b.cards - a.cards ||
+      b.salesCards - a.salesCards ||
+      b.conversionRate - a.conversionRate
+    );
+
+  const coordinatorToSeller = [...coordinatorSeller.values()]
+    .map(row => ({
+      ...row,
+      conversionRate: ratio(row.salesCards, row.cards)
+    }))
+    .sort((a, b) => b.cards - a.cards || b.salesCards - a.salesCards);
+
+  const coordinatorToDepartment = [...coordinatorDepartment.values()]
+    .map(row => ({
+      ...row,
+      conversionRate: ratio(row.salesCards, row.cards)
+    }))
+    .sort((a, b) => b.cards - a.cards || b.salesCards - a.salesCards);
+
+  const sellerInbound = [...bySeller.values()]
+    .map(seller => {
+      const topCoordinator = topEntry(seller.coordinatorCounts);
+
+      return {
+        seller: seller.seller,
+        sellerLabel: seller.sellerLabel,
+        cards: seller.cards,
+        quoteCount: seller.quoteCount,
+        salesCards: seller.salesCards,
+        quoteAmount: seller.quoteAmount,
+        salesAmount: seller.salesAmount,
+        conversionRate: ratio(seller.salesCards, seller.cards),
+        topCoordinator: topCoordinator.name,
+        topCoordinatorCards: topCoordinator.count
+      };
+    })
+    .sort((a, b) => b.cards - a.cards || b.salesCards - a.salesCards);
+
+  const departmentInbound = [...byDepartment.values()]
+    .map(department => {
+      const topCoordinator = topEntry(department.coordinatorCounts);
+
+      return {
+        department: department.department,
+        cards: department.cards,
+        quoteCount: department.quoteCount,
+        salesCards: department.salesCards,
+        quoteAmount: department.quoteAmount,
+        salesAmount: department.salesAmount,
+        conversionRate: ratio(department.salesCards, department.cards),
+        topCoordinator: topCoordinator.name,
+        topCoordinatorCards: topCoordinator.count
+      };
+    })
+    .sort((a, b) => b.cards - a.cards || b.salesCards - a.salesCards);
+
+  const totalCards = leadRows.length;
+  const appointmentBooked = quoteRows.length;
+  const salesCards = wonRows.length;
+  const totalQuoteAmount = sumBy(quoteRows, row => row.amountUsd);
+  const totalSalesAmount = sumBy(wonRows, row => row.amountUsd);
+  const allAvailableRows = [
+    ...data.leadRows,
+    ...data.quoteRows,
+    ...data.wonRows
+  ].filter(row => !ownSeller || row.seller === ownSeller);
+
+  return {
+    filters,
+    kpis: {
+      totalCards,
+      salesCards,
+      conversionRate: ratio(salesCards, totalCards),
+      activeCoordinators: new Set(
+        [...leadRows, ...quoteRows, ...wonRows]
+          .map(row => row.coordinator)
+          .filter(Boolean)
+      ).size,
+      appointmentBooked,
+      totalQuoteAmount,
+      totalSalesAmount,
+      arrived: 0,
+      successful: salesCards,
+      unassignedCards: leadRows.filter(row => isUnassignedSeller(row.seller)).length
+    },
+    coordinators,
+    coordinatorToSeller,
+    coordinatorToDepartment,
+    sellerInbound,
+    departmentInbound,
+    statusBreakdown: [
+      { status: "Lead", count: totalCards, share: ratio(totalCards, totalCards) },
+      { status: "Teklif", count: appointmentBooked, share: ratio(appointmentBooked, totalCards) },
+      { status: "Satış", count: salesCards, share: ratio(salesCards, totalCards) }
+    ],
+    options: {
+      coordinators: uniqueSorted(allAvailableRows, "coordinator"),
+      sellers: [
+        ...new Map(
+          allAvailableRows
+            .filter(row => row.seller)
+            .map(row => [
+              row.seller,
+              { value: row.seller, label: row.sellerLabel || anySellerLabel(row.seller) }
+            ])
+        ).values()
+      ].sort((a, b) => a.label.localeCompare(b.label, "tr")),
+      departments: uniqueSorted(allAvailableRows, "department"),
+      statuses: ["Lead", "Teklif", "Satış"]
+    },
+    dataQuality: data.dataQuality.coordinator,
+    rule: {
+      salesStatuses: ["Lead", "Teklif", "Satış"],
+      dedupe: "Bitrix ID bazında tekilleştirilir; aynı ID her kaynakta yalnızca bir kez sayılır.",
+      period: "Lead New Lead (yoksa Başlangıç), teklif Quoted ve satış Deal Won tarihine göre seçilen aya dahil edilir."
     }
   };
 }

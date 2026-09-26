@@ -2203,6 +2203,38 @@ function isFacilitatorCategory(
   );
 }
 
+function isFacilitatorSourceCode(
+  value
+) {
+  return /(?:^|\D)05\s*$/.test(
+    cleanText(value)
+  );
+}
+
+function isFacilitatorSale(
+  row
+) {
+  const category =
+    cleanText(
+      row?.sourceCategory
+    );
+
+  if (category) {
+    return isFacilitatorCategory(
+      category
+    );
+  }
+
+  /*
+    Source Kategorisi Apps Script yanıtında henüz görünmüyorsa,
+    RU tablosundaki FACILITATORS kategori kodu olan "- 05"
+    yalnızca yedek kontrol olarak kullanılır.
+  */
+  return isFacilitatorSourceCode(
+    row?.source
+  );
+}
+
 function dedupeRows(rows) {
   const seen =
     new Set();
@@ -3534,7 +3566,13 @@ function aggregate(
 
             sourceCategory:
               row.sourceCategory ||
-              "-",
+              (
+                isFacilitatorSourceCode(
+                  row.source
+                )
+                  ? "05 - FACILITATORS"
+                  : "-"
+              ),
 
             department:
               row.department ||
@@ -3597,8 +3635,8 @@ function aggregate(
               ) =>
                 row.seller ===
                   seller.key &&
-                isFacilitatorCategory(
-                  row.sourceCategory
+                isFacilitatorSale(
+                  row
                 )
             );
 

@@ -3516,6 +3516,62 @@ function aggregate(
             sales:
               sellerSales,
 
+            salesDetails:
+              sellerWon
+                .map(
+                  (
+                    row
+                  ) => ({
+                    id:
+                      row.id ||
+                      "-",
+
+                    patientName:
+                      row.patientName ||
+                      "İsimsiz vaka",
+
+                    dealWonDate:
+                      isoDateOnly(
+                        row.date
+                      ),
+
+                    amountUsd:
+                      Number(
+                        row.amountUsd ||
+                        0
+                      ),
+
+                    coordinator:
+                      row.coordinator ||
+                      "-",
+
+                    department:
+                      row.department ||
+                      "-",
+
+                    doctor:
+                      row.doctor ||
+                      "-"
+                  })
+                )
+                .sort(
+                  (
+                    a,
+                    b
+                  ) =>
+                    String(
+                      b.dealWonDate ||
+                      ""
+                    ).localeCompare(
+                      String(
+                        a.dealWonDate ||
+                        ""
+                      )
+                    ) ||
+                    b.amountUsd -
+                      a.amountUsd
+                ),
+
             conversion:
               ratio(
                 sellerWon.length,

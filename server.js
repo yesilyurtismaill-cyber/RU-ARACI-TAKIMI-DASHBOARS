@@ -3525,6 +3525,18 @@ function aggregate(
         row.amountUsd
     );
 
+  const facilitatorWon =
+    won.filter(
+      isFacilitatorSale
+    );
+
+  const facilitatorSales =
+    sumBy(
+      facilitatorWon,
+      row =>
+        row.amountUsd
+    );
+
   const target =
     targetForPeriod(
       filters.period,
@@ -3533,7 +3545,7 @@ function aggregate(
 
   const expected =
     projectWonRows(
-      won
+      facilitatorWon
     );
 
   const salesDetailsFor =
@@ -3895,42 +3907,51 @@ function aggregate(
           .expectedAmount,
 
       dealWon:
-        won.length,
+        facilitatorWon.length,
 
       quoteAmount,
 
-      sales,
+      sales:
+        facilitatorSales,
+
+      allDealWon:
+        won.length,
+
+      allSales:
+        sales,
+
+      facilitatorSales,
 
       target,
 
       targetPct:
         ratio(
-          sales,
+          facilitatorSales,
           target
         ),
 
       remaining:
         Math.max(
           target -
-            sales,
+            facilitatorSales,
           0
         ),
 
       conversion:
         ratio(
-          won.length,
+          facilitatorWon.length,
           lead.length
         ),
 
       quoteToWon:
         ratio(
-          won.length,
+          facilitatorWon.length,
           quote.length
         ),
 
       expectedToWon:
         ratio(
-          won.length,
+          facilitatorWon.length,
           expected
             .expectedDealWon
         )
@@ -3956,7 +3977,7 @@ function aggregate(
           .expectedAmount,
 
       won:
-        won.length
+        facilitatorWon.length
     },
 
     breakdowns,

@@ -1204,98 +1204,140 @@ async function loadAppsScriptData() {
       async (
         sheetName
       ) => {
-        const url =
-          new URL(base);
+        let lastError =
+          null;
 
-        url.searchParams.set(
-          "sheet",
-          sheetName
-        );
-
-        url.searchParams.set(
-          "key",
-          key
-        );
-
-        const response =
-          await fetch(
-            url,
-            {
-              signal:
-                controller.signal,
-
-              redirect:
-                "follow",
-
-              cache:
-                "no-store"
-            }
-          );
-
-        const text =
-          await response.text();
-
-        let data;
-
-        try {
-          data =
-            JSON.parse(text);
-
-        } catch {
-          console.error(
-            `Apps Script JSON olmayan cevap (${sheetName}):`,
-            text.slice(
-              0,
-              500
-            )
-          );
-
-          throw new Error(
-            `Apps Script ${sheetName} verisini geçerli JSON olarak döndürmedi.`
-          );
-        }
-
-        if (
-          !response.ok ||
-          data.success ===
-            false
+        for (
+          let attempt = 1;
+          attempt <= 3;
+          attempt += 1
         ) {
-          throw new Error(
-            data.error ||
-            `Apps Script ${sheetName} HTTP ${response.status}`
-          );
+          try {
+            const url =
+              new URL(base);
+
+            url.searchParams.set(
+              "sheet",
+              sheetName
+            );
+
+            url.searchParams.set(
+              "key",
+              key
+            );
+
+            /* Yeniden denemelerde Google/ara proxy önbelleğini atla. */
+            url.searchParams.set(
+              "requestId",
+              `${Date.now()}-${attempt}`
+            );
+
+            const response =
+              await fetch(
+                url,
+                {
+                  signal:
+                    controller.signal,
+
+                  redirect:
+                    "follow",
+
+                  cache:
+                    "no-store"
+                }
+              );
+
+            const text =
+              await response.text();
+
+            let data;
+
+            try {
+              data =
+                JSON.parse(text);
+
+            } catch {
+              throw new Error(
+                `Apps Script ${sheetName} verisini geçerli JSON olarak döndürmedi.`
+              );
+            }
+
+            if (
+              !response.ok ||
+              data.success ===
+                false
+            ) {
+              throw new Error(
+                data.error ||
+                `Apps Script ${sheetName} HTTP ${response.status}`
+              );
+            }
+
+            return Array.isArray(
+              data.rows
+            )
+              ? data.rows
+              : [];
+
+          } catch (
+            error
+          ) {
+            lastError =
+              error;
+
+            console.warn(
+              `Apps Script ${sheetName} denemesi ${attempt}/3 başarısız:`,
+              error?.message ||
+              error
+            );
+
+            if (
+              controller.signal.aborted ||
+              attempt === 3
+            ) {
+              break;
+            }
+
+            await new Promise(
+              resolve =>
+                setTimeout(
+                  resolve,
+                  attempt * 750
+                )
+            );
+          }
         }
 
-        return Array.isArray(
-          data.rows
-        )
-          ? data.rows
-          : [];
+        throw lastError ||
+          new Error(
+            `Apps Script ${sheetName} verisi alınamadı.`
+          );
       };
 
-    const [
-      lead,
-      quote,
-      won,
-      targets
-    ] =
-      await Promise.all([
-        fetchSheet(
-          "Ham Lead"
-        ),
+    /*
+      Aynı Google E-Tabloyu dört paralel web-app isteğiyle okumak,
+      Apps Script'in bazen JSON yerine geçici HTML hata sayfası
+      döndürmesine neden oluyor. Sayfaları sırayla almak daha kararlıdır.
+    */
+    const won =
+      await fetchSheet(
+        "Ham Deal Won"
+      );
 
-        fetchSheet(
-          "Ham Teklif"
-        ),
+    const lead =
+      await fetchSheet(
+        "Ham Lead"
+      );
 
-        fetchSheet(
-          "Ham Deal Won"
-        ),
+    const quote =
+      await fetchSheet(
+        "Ham Teklif"
+      );
 
-        fetchSheet(
-          "Hedefler"
-        )
-      ]);
+    const targets =
+      await fetchSheet(
+        "Hedefler"
+      );
 
     rawCache = {
       lead,

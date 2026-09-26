@@ -326,13 +326,13 @@
   }
 
   function salesFlow(k) {
-    const sales=Number(k.sales||0), expected=Number(k.expectedAmount||0), target=Number(k.target||0), remaining=Number(k.remaining||0);
+    const sales=Number(k.facilitatorSales ?? k.sales ?? 0), expected=Number(k.expectedAmount||0), target=Number(k.target||0), remaining=Number(k.remaining||0);
     const scale=Math.max(1,sales,expected,target);
     const barWidth=value=>Math.min(100,Math.max(0,Number(value||0)/scale*100));
     const gapComplete=remaining<=0&&target>0;
-    return `<section class="panel dashboard-panel accent-green"><div class="panel-head"><h3>Satış Özeti ve Akışı</h3><span class="muted">Gerçekleşen · Expected · Hedef · Fark</span></div><div class="sales-overview">
+    return `<section class="panel dashboard-panel accent-green"><div class="panel-head"><h3>Satış Özeti ve Akışı</h3><span class="muted">FACILITATORS · Expected · Hedef · Fark</span></div><div class="sales-overview">
       <div class="sales-scorecards">
-        <article class="sales-scorecard real"><div class="sales-score-label"><span>Gerçekleşen</span><i></i></div><strong>${money(sales)}</strong><small>${number(k.dealWon)} Deal Won · Hedefin ${pct(k.targetPct)}</small></article>
+        <article class="sales-scorecard real"><div class="sales-score-label"><span>Gerçekleşen · Facilitator</span><i></i></div><strong>${money(sales)}</strong><small>${number(k.dealWon)} Facilitator Deal Won · Hedefin ${pct(k.targetPct)}</small></article>
         <article class="sales-scorecard expected"><div class="sales-score-label"><span>Expected</span><i></i></div><strong>${money(expected)}</strong><small>${number(k.expectedDealWon)} beklenen satış · Won dönüşümü ${pct(k.expectedToWon)}</small></article>
         <article class="sales-scorecard target"><div class="sales-score-label"><span>Hedef</span><i></i></div><strong>${money(target)}</strong><small>Seçili dönemin satış hedefi</small></article>
         <article class="sales-scorecard gap ${gapComplete?"complete":""}"><div class="sales-score-label"><span>Fark</span><i></i></div><strong>${gapComplete?"Hedef Tamamlandı":money(remaining)}</strong><small>${gapComplete?"Hedefe kalan fark bulunmuyor":"Hedefe ulaşmak için kalan"}</small></article>
@@ -347,7 +347,7 @@
           <div class="sales-funnel-step"><span>Lead</span><b>${number(k.lead)}</b><small>Başlangıç</small></div>
           <div class="sales-funnel-step"><span>Teklif</span><b>${number(k.quoteCount)}</b><small>${pct(k.lead?k.quoteCount/k.lead:0)}</small></div>
           <div class="sales-funnel-step"><span>Expected</span><b>${number(k.expectedDealWon)}</b><small>Beklenen</small></div>
-          <div class="sales-funnel-step"><span>Won</span><b>${number(k.dealWon)}</b><small>${pct(k.conversion)}</small></div>
+          <div class="sales-funnel-step"><span>Facilitator Won</span><b>${number(k.dealWon)}</b><small>${pct(k.conversion)}</small></div>
         </div></div>
       </div>
     </div></section>`;
@@ -517,7 +517,7 @@
       ${dashboardFilters(d)}
       <section class="summary-strip">
         <div class="summary-item"><span>Seçili dönem</span><b>${esc(state.period === "genel" ? "2026 Genel" : MONTHS[Number(state.period)] || "2026")}</b></div>
-        <div class="summary-item good"><span>Gerçekleşen satış</span><b>${money(k.sales)}</b></div>
+        <div class="summary-item good"><span>Facilitator gerçekleşen satış</span><b>${money(k.facilitatorSales ?? k.sales)}</b></div>
         <div class="summary-item warn"><span>Hedefe kalan</span><b>${money(k.remaining)}</b></div>
         <div class="summary-item"><span>Toplam teklif tutarı</span><b>${money(k.quoteAmount)}</b></div>
       </section>

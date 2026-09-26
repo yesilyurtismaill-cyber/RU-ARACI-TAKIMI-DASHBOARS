@@ -1872,6 +1872,16 @@ function commonFields(
           "Source HBYS",
           "Source"
         )
+      ),
+
+    sourceCategory:
+      cleanText(
+        pick(
+          lookup,
+          "Source Kategorisi",
+          "Source Category",
+          "SourceCategory"
+        )
       )
   };
 }
@@ -2147,6 +2157,18 @@ function normalizeWonRow(
   return {
     ...common,
 
+    patientName:
+      cleanText(
+        pick(
+          lookup,
+          "Ad",
+          "Hasta Adı",
+          "Hasta Adi",
+          "Patient Name",
+          "Name"
+        )
+      ),
+
     date,
 
     year:
@@ -2169,6 +2191,16 @@ function normalizeWonRow(
         )
       )
   };
+}
+
+function isFacilitatorCategory(
+  value
+) {
+  return normalizeText(
+    value
+  ).includes(
+    "facilitator"
+  );
 }
 
 function dedupeRows(rows) {
@@ -3472,6 +3504,65 @@ function aggregate(
       won
     );
 
+  const salesDetailsFor =
+    rows =>
+      rows
+        .map(
+          row => ({
+            id:
+              row.id ||
+              "-",
+
+            patientName:
+              row.patientName ||
+              "İsimsiz vaka",
+
+            dealWonDate:
+              isoDateOnly(
+                row.date
+              ),
+
+            amountUsd:
+              Number(
+                row.amountUsd ||
+                0
+              ),
+
+            coordinator:
+              row.coordinator ||
+              "-",
+
+            sourceCategory:
+              row.sourceCategory ||
+              "-",
+
+            department:
+              row.department ||
+              "-",
+
+            doctor:
+              row.doctor ||
+              "-"
+          })
+        )
+        .sort(
+          (
+            a,
+            b
+          ) =>
+            String(
+              b.dealWonDate ||
+              ""
+            ).localeCompare(
+              String(
+                a.dealWonDate ||
+                ""
+              )
+            ) ||
+            b.amountUsd -
+              a.amountUsd
+        );
+
   const sellerPerformance =
     visibleSellers(
       filters,
@@ -3505,7 +3596,10 @@ function aggregate(
                 row
               ) =>
                 row.seller ===
-                seller.key
+                  seller.key &&
+                isFacilitatorCategory(
+                  row.sourceCategory
+                )
             );
 
           const sellerExpected =
@@ -3559,60 +3653,9 @@ function aggregate(
               sellerSales,
 
             salesDetails:
-              sellerWon
-                .map(
-                  (
-                    row
-                  ) => ({
-                    id:
-                      row.id ||
-                      "-",
-
-                    patientName:
-                      row.patientName ||
-                      "İsimsiz vaka",
-
-                    dealWonDate:
-                      isoDateOnly(
-                        row.date
-                      ),
-
-                    amountUsd:
-                      Number(
-                        row.amountUsd ||
-                        0
-                      ),
-
-                    coordinator:
-                      row.coordinator ||
-                      "-",
-
-                    department:
-                      row.department ||
-                      "-",
-
-                    doctor:
-                      row.doctor ||
-                      "-"
-                  })
-                )
-                .sort(
-                  (
-                    a,
-                    b
-                  ) =>
-                    String(
-                      b.dealWonDate ||
-                      ""
-                    ).localeCompare(
-                      String(
-                        a.dealWonDate ||
-                        ""
-                      )
-                    ) ||
-                    b.amountUsd -
-                      a.amountUsd
-                ),
+              salesDetailsFor(
+                sellerWon
+              ),
 
             conversion:
               ratio(
@@ -3652,6 +3695,70 @@ function aggregate(
             a.won ||
           b.expectedAmount -
             a.expectedAmount
+      );
+
+  const generalSellerSales =
+    visibleSellers(
+      filters,
+      user
+    )
+      .map(
+        seller => {
+          const sellerWon =
+            won.filter(
+              row =>
+                row.seller ===
+                seller.key
+            );
+
+          const sellerSales =
+            sumBy(
+              sellerWon,
+              row =>
+                row.amountUsd
+            );
+
+          return {
+            seller:
+              seller.key,
+
+            sellerLabel:
+              seller.label,
+
+            won:
+              sellerWon.length,
+
+            sales:
+              sellerSales,
+
+            avgSale:
+              ratio(
+                sellerSales,
+                sellerWon.length
+              ),
+
+            salesShare:
+              ratio(
+                sellerSales,
+                sales
+              ),
+
+            salesDetails:
+              salesDetailsFor(
+                sellerWon
+              )
+          };
+        }
+      )
+      .sort(
+        (
+          a,
+          b
+        ) =>
+          b.sales -
+            a.sales ||
+          b.won -
+            a.won
       );
 
   const breakdowns = {};
@@ -3792,6 +3899,8 @@ function aggregate(
     },
 
     sellerPerformance,
+
+    generalSellerSales,
 
     funnel: {
       lead:

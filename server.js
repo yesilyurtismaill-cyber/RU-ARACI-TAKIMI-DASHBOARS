@@ -1879,7 +1879,13 @@ function commonFields(
         pick(
           lookup,
           "Source Kategorisi",
+          "Source Kategori",
           "Source Category",
+          "Source Categories",
+          "Sources Category",
+          "Sources Categories",
+          "Kaynak Kategorisi",
+          "Kaynak Kategori",
           "SourceCategory"
         )
       )

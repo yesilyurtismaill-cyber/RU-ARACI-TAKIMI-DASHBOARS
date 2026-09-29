@@ -2202,10 +2202,18 @@ function normalizeWonRow(
 function isFacilitatorCategory(
   value
 ) {
-  return normalizeText(
-    value
-  ).includes(
-    "facilitator"
+  const text =
+    cleanText(value);
+
+  return (
+    normalizeText(
+      text
+    ).includes(
+      "facilitator"
+    ) ||
+    /^0?5(?:\D|$)/.test(
+      text
+    )
   );
 }
 
@@ -2225,19 +2233,18 @@ function isFacilitatorSale(
       row?.sourceCategory
     );
 
-  if (category) {
-    return isFacilitatorCategory(
-      category
-    );
-  }
-
   /*
-    Source Kategorisi Apps Script yanıtında henüz görünmüyorsa,
-    RU tablosundaki FACILITATORS kategori kodu olan "- 05"
-    yalnızca yedek kontrol olarak kullanılır.
+    RU tablosunda FACILITATORS kategori kodu 05'tir.
+    Kategori adı farklı yazılsa veya Apps Script alanı eksik gelse bile
+    Source HBYS sonundaki "- 05" kodu satışın kaybolmasını engeller.
   */
-  return isFacilitatorSourceCode(
-    row?.source
+  return (
+    isFacilitatorCategory(
+      category
+    ) ||
+    isFacilitatorSourceCode(
+      row?.source
+    )
   );
 }
 
